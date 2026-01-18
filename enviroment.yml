@@ -1,0 +1,12 @@
+name: mujoco-x2-obstacle-avoidance
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - pip
+  - numpy
+  - opencv=4.12.0
+  - gymnasium=1.2.2
+  - mujoco-python=3.3.6
+  - simple-pid
+

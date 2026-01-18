@@ -2,6 +2,15 @@
 
 Проект с симуляцией квадрокоптера **Skydio X2** в **MuJoCo** и Gymnasium-средой для задач **obstacle avoidance**. БПЛА летит вперёд с фиксированной линейной скоростью, а агент управляет боковым смещением, стараясь пролетать между процедурно сгенерированными препятствиями (столбами) без столкновений.
 
+## Создание среды (Conda)
+
+В репозитории есть `enviroment.yml` (Conda environment):
+
+```bash
+conda env create -f enviroment.yml
+conda activate mujoco-x2-obstacle-avoidance
+```
+
 ## Структура репозитория
 
 - `main.py` — CLI для запуска простых сценариев (`view`, `random`).
