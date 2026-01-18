@@ -1,20 +1,16 @@
-# Skydio X2 in Mujoco
+# Skydio X2 в MuJoCo: obstacle avoidance
 
-Using the mujoco_menagerie repo, I let the drone out of its cage.
+Проект с симуляцией квадрокоптера **Skydio X2** в **MuJoCo** и Gymnasium-средой для задач **obstacle avoidance**. БПЛА летит вперёд с фиксированной линейной скоростью, а агент управляет боковым смещением, стараясь пролетать между процедурно сгенерированными препятствиями (столбами) без столкновений.
 
-![Alt Text](assets/demo.gif)
+## Структура репозитория
 
-## Getting started
-Set-up MuJoCo and the requirements. Then, simply run main.py
-
-## To-Dos
-Here are some To-Dos of this project:
-
-- Improve PID controllers
-- Add a "real" sensor and state estimator
-- Add a "real" trajectory planner
-
-## Acknowledgements
-Mujoco: https://github.com/google-deepmind/mujoco
-Mujoco Menagerie: https://github.com/google-deepmind/mujoco_menagerie
-Simple PID: https://github.com/m-lundberg/simple-pid/tree/master
+- `main.py` — CLI для запуска простых сценариев (`view`, `random`).
+- `rl/`
+  - `environment.py` — Gymnasium-среда `DroneObstacleAvoidanceEnv`.
+  - `map_generator.py` — генерация карты препятствий.
+  - `model.py` — (если используется) модели/обёртки для RL.
+- `sim/`
+  - `scene.py` — генерация/управление сценой MuJoCo, добавление препятствий.
+  - `uav.py` — модель дрона, сенсоры, камера и интерфейс управления скоростями.
+  - `controllers.py` — контроллеры (PID и т.п.).
+- `licenses/` — лицензии сторонних компонентов.

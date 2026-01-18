@@ -161,3 +161,6 @@ cython_debug/
 
 # ROBOT FOLDER
 mujoco_menagerie-main/** 
+
+models
+**.DS_Store**
