@@ -71,20 +71,22 @@ class PIDController:
 class DummyPlanner:
   """Generate Path from 1 point directly to another"""
 
-  def __init__(self, target, vel_limit = 2) -> None:
+  def __init__(self, target, vel_limit = 2, sim_dt: float = 0.002) -> None:
     self.target = target  
     self.vel_limit = vel_limit
+    self._sim_dt = float(sim_dt)
     # setpoint target location, controller output: desired velocity.
     self.pid_x = PID(2, 0.15, 1.5, setpoint = self.target[0],
-                output_limits = (-vel_limit, vel_limit),)
+                output_limits = (-vel_limit, vel_limit), sample_time=None)
     self.pid_y = PID(2, 0.15, 1.5, setpoint = self.target[1],
-                output_limits = (-vel_limit, vel_limit))
+                output_limits = (-vel_limit, vel_limit), sample_time=None)
   
   def __call__(self, loc: np.array):
     """Calls planner at timestep to update cmd_vel"""
-    velocites = np.array([0,0,0])
-    velocites[0] = self.pid_x(loc[0])
-    velocites[1] = self.pid_y(loc[1])
+    dt = self._sim_dt
+    velocites = np.zeros(3, dtype=np.float64)
+    velocites[0] = self.pid_x(loc[0], dt=dt)
+    velocites[1] = self.pid_y(loc[1], dt=dt)
     return velocites
 
   def get_velocities(self,loc: np.array, target: np.array,

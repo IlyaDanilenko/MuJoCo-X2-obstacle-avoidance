@@ -1,3 +1,10 @@
+# FastDepth веса (скачиваются в pretrained_model/)
+pretrained_model/*.pth
+config
+docs
+scripts
+RT-MonoDepth
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -164,3 +171,8 @@ mujoco_menagerie-main/**
 
 models
 **.DS_Store**
+test
+datasets
+test_depth
+config/experiments*
+config/experiments**/*.yaml 

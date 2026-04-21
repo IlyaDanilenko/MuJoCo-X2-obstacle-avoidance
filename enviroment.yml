@@ -4,9 +4,22 @@ channels:
 dependencies:
   - python=3.12
   - pip
-  - numpy
+  - setuptools<82
+  - numpy>=1.26,<2
+  - xformers>=0.0.29
+  - h5py
+  - pillow
   - opencv=4.12.0
   - gymnasium=1.2.2
   - mujoco-python=3.3.6
   - simple-pid
-
+  - pytorch
+  - torchvision
+  - torchaudio
+  - tqdm
+  - tensorboard
+  - matplotlib
+  - scikit-learn
+  - pyyaml
+  - pip:
+      - git+https://github.com/ByteDance-Seed/depth-anything-3.git

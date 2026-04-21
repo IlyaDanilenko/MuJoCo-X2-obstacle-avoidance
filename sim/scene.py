@@ -1,9 +1,37 @@
 # sim/scene.py - код генератора сцен
 
+import math
 import mujoco
 import os
 from collections import Counter
 import re
+
+
+def _quat_mul_wxyz(qa: tuple, qb: tuple) -> list:
+    """Гамильтон q_a ⊗ q_b, оба (w, x, y, z)."""
+    aw, ax, ay, az = qa
+    bw, bx, by, bz = qb
+    return [
+        aw * bw - ax * bx - ay * by - az * bz,
+        aw * bx + ax * bw + ay * bz - az * by,
+        aw * by - ax * bz + ay * bw + az * bx,
+        aw * bz + ax * by - ay * bx + az * bw,
+    ]
+
+
+def _quat_normalize_wxyz(q) -> list:
+    n = math.sqrt(float(q[0]) ** 2 + float(q[1]) ** 2 + float(q[2]) ** 2 + float(q[3]) ** 2)
+    if n < 1e-12:
+        return [1.0, 0.0, 0.0, 0.0]
+    return [float(q[0]) / n, float(q[1]) / n, float(q[2]) / n, float(q[3]) / n]
+
+
+def _compose_rot90z_quat(q) -> list:
+    """Доп. поворот -90° вокруг Z тела (после q): нос меша X2 — вдоль +Y (к цели по +Y), в такт камере.
+    +90° давало нос в -Y из‑за ориентации ассета вдоль -X."""
+    s2 = math.sqrt(0.5)
+    qz_m90 = (s2, 0.0, 0.0, -s2)
+    return _quat_normalize_wxyz(_quat_mul_wxyz(qz_m90, tuple(_quat_normalize_wxyz(q))))
 
 class SceneGenerator:
     def __init__(self, modelname="Skydio X2 scene"):
@@ -165,7 +193,7 @@ class SceneGenerator:
         
         # Добавляем worldbody элементы из x2.xml
         spotlight = spec.worldbody.add_light(name="spotlight")
-        spotlight.pos = [0, -1, 2]
+        spotlight.pos = [0, 1, 2]
         self.used_names.add("spotlight")
         
         x2_body = spec.worldbody.add_body(name="x2", pos=[0, 0, 0.1])
@@ -176,26 +204,30 @@ class SceneGenerator:
         x2_body.add_freejoint()
         
         # Добавляем камеры
-        track_cam = x2_body.add_camera(name="track", pos=[-1, 0, 0.5], xyaxes=[0, -1, 0, 1, 0, 2])
-        drone_cam = x2_body.add_camera(name="drone_camera", pos=[-0.3, 0, 0], 
-                                       xyaxes=[0, 1, 0, 0.1736, 0, 0.9848])
+        # track_cam = x2_body.add_camera(name="track", pos=[-1, 0, 0.5], xyaxes=[0, -1, 0, 1, 0, 2])
+        # Камера: вперёд по +Y тела, право кадра = +X, верх = +Z (оси тела = миру при нулевом повороте)
+        drone_cam = x2_body.add_camera(
+            name="drone_camera",
+            pos=[0, -0.3, 0],
+            xyaxes=[1, 0, 0, 0, 0, 1],
+        )
         drone_cam.fovy = 70
         
-        # Добавляем sites
+        # IMU / тяга / коллизии / роторы — как в menagerie (согласованы с ПИД). Визуальный меш повёрнут
+        # на -90° о Z тела относительно базового кватерниона меша, нос вдоль +Y, как камера и цель.
         imu_site = x2_body.add_site(name="imu", pos=[0, 0, 0.02])
         thrust1_site = x2_body.add_site(name="thrust1", pos=[-0.14, -0.18, 0.05])
         thrust2_site = x2_body.add_site(name="thrust2", pos=[-0.14, 0.18, 0.05])
         thrust3_site = x2_body.add_site(name="thrust3", pos=[0.14, 0.18, 0.08])
         thrust4_site = x2_body.add_site(name="thrust4", pos=[0.14, -0.18, 0.08])
         
-        # Добавляем geoms
         visual_geom = x2_body.add_geom()
         visual_geom.classname = self.visual_default
         visual_geom.type = mujoco.mjtGeom.mjGEOM_MESH
         visual_geom.group = 2
         visual_geom.material = "phong3SG"
         visual_geom.meshname = "X2_lowpoly"
-        visual_geom.quat = [0, 0, 1, 1]
+        visual_geom.quat = _compose_rot90z_quat([0, 0, 1, 1])
         
         collision1 = x2_body.add_geom()
         collision1.classname = self.collision_default
@@ -311,7 +343,16 @@ class SceneGenerator:
         
         self.base_scene_generated = True
     
-    def add_pillar(self, x, y, radius, height, name=None, rgba=None):
+    def add_pillar(
+        self,
+        x,
+        y,
+        radius,
+        height,
+        name=None,
+        rgba=None,
+        enable_collision: bool = True,
+    ):
         """
         Добавление столба (цилиндра) в сцену
         
@@ -322,6 +363,7 @@ class SceneGenerator:
             height: Высота столба
             name: Имя столба (если None, генерируется автоматически)
             rgba: Цвет RGBA [r, g, b, a] (опционально, если не указан material)
+            enable_collision: если False — только визуал (contype/conaffinity = 0)
         
         Returns:
             Созданный geom объект
@@ -364,8 +406,12 @@ class SceneGenerator:
         pillar_geom.size = size
         pillar_geom.pos = pos
         pillar_geom.group = 0
-        pillar_geom.contype = 1
-        pillar_geom.conaffinity = 1
+        if enable_collision:
+            pillar_geom.contype = 1
+            pillar_geom.conaffinity = 1
+        else:
+            pillar_geom.contype = 0
+            pillar_geom.conaffinity = 0
         
         if rgba:
             pillar_geom.rgba = rgba
@@ -423,7 +469,16 @@ class Scene:
       self.m = self.generator.compile()
       self.d = mujoco.MjData(self.m)
   
-  def add_pillar(self, x, y, radius, height, name=None, rgba=None):
+  def add_pillar(
+      self,
+      x,
+      y,
+      radius,
+      height,
+      name=None,
+      rgba=None,
+      enable_collision: bool = True,
+  ):
     """
     Добавляет столб в сцену через SceneGenerator
     
@@ -434,12 +489,20 @@ class Scene:
         height: Высота столба
         name: Имя столба (опционально)
         rgba: Цвет RGBA [r, g, b, a] (опционально)
+        enable_collision: столкновения с дроном (по умолчанию True)
     """
     if self.generator is None:
       raise ValueError("Нельзя добавлять столбы в сцену, загруженную из файла. Создайте сцену через SceneGenerator.")
     
-    self.generator.add_pillar(x=x, y=y, radius=radius, height=height, 
-                              name=name, rgba=rgba)
+    self.generator.add_pillar(
+        x=x,
+        y=y,
+        radius=radius,
+        height=height,
+        name=name,
+        rgba=rgba,
+        enable_collision=enable_collision,
+    )
     
     self.generator.compiled = False
     
