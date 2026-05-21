@@ -254,7 +254,7 @@ class DroneObstacleAvoidanceEnv(gym.Env):
         # Изображение: (H, W, 3) в диапазоне [0, 255]
         # Буфер сенсоров за K шагов (одометрия): (K, 6) — [accel, gyro] на каждом шаге
         # accelerometer, gyroscope — текущий шаг (для совместимости)
-        self.observation_space = spaces.typing.Dict({
+        self.observation_space = spaces.Dict({
             "image": spaces.Box(
                 low=0,
                 high=255,
